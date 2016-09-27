@@ -1,0 +1,101 @@
+Sub TorCopy()
+    
+    ' Set variables
+    Dim Word As New Word.Application
+    Dim WordDoc As New Word.Document
+    Dim i As Integer
+    Dim j As Integer
+    Dim r As Word.range
+    Dim Doc_Path As String
+    Dim Doc_File As String
+    Dim TOR_Tracker As Excel.Workbook
+    Dim TOR_Tracker_Path As String
+    Dim Whiteboard_Path As String
+    Dim Whiteboard As Excel.Workbook
+    Dim FileName As String
+    Dim n As Long
+    Dim m As Long
+    
+    ' Set file path that contains TOR
+    ' Set file wildcard
+    Doc_Path = "C:\Users\chris.noller\Desktop\TORs\"
+    Doc_File = Dir("C:\Users\chris.noller\Desktop\TORs\*.docx")
+    
+    ' Set TOR tracker path and open spreadsheet
+    TOR_Tracker_Path = "C:\Users\chris.noller\Desktop\Event and TOR tracking test.xlsm"
+    Set TOR_Tracker = Workbooks.Open(TOR_Tracker_Path)
+    
+    ' Open up a whiteboard to arrange data before copying to TOR tracker
+    Whiteboard_Path = "C:\Users\chris.noller\Desktop\Whiteboard.xlsm"
+    Set Whiteboard = Workbooks.Open(Whiteboard_Path)
+    
+    ' Run loop until there are no quicklooks left
+    Do While Doc_File <> ""
+        MsgBox (Doc_Path & Doc_File)
+        
+        ' Open quicklook
+        Set WordDoc = Word.Documents.Open(Doc_Path & Doc_File)
+        
+        ' Activate whiteboard spreadsheet
+        Whiteboard.Worksheets("Sheet1").Activate
+        
+        ' Create a range to search
+        Set r = WordDoc.Content
+        
+        ' Set number of row to copy to equal to 1
+        j = 1
+        
+        ' Find TOR numbers and copy them to whiteboard spreadsheet
+        With r
+            .Find.ClearFormatting
+            With .Find
+                .Text = "TP[0-9]{4}"
+                .Format = False
+                .MatchCase = False
+                .MatchWholeWord = False
+                .MatchWildcards = True
+            End With
+            Do While .Find.Execute = True
+                .Copy
+                ActiveSheet.Cells(j, 1).Select
+                ActiveSheet.Paste
+                j = j + 1
+            Loop
+        End With
+        
+        ' Filter out duplicate TOR numbers
+        n = ActiveSheet.Cells(Rows.Count, "A").End(xlUp).Row
+        ActiveSheet.range("A1:A" & n).RemoveDuplicates Columns:=1, Header:=xlNo
+        
+        ' Copy TOR numbers from whiteboard
+        With ActiveSheet
+            .range("A1").Select
+            .range(Selection, Selection.End(xlDown)).Select
+            Selection.Copy
+        End With
+        
+        ' Paste to TOR Tracker
+        TOR_Tracker.Worksheets("Sheet1").Activate
+        m = ActiveSheet.Cells(Rows.Count, "E").End(xlUp).Row
+        Debug.Print m & " " & n
+        With ActiveSheet
+            .range("E" & m).Select
+            ActiveCell.Offset(1, 0).Select
+            .Paste
+        End With
+        
+        ' Close quicklook
+        WordDoc.Close
+        
+        ' Clear whiteboard
+        Whiteboard.Worksheets("Sheet1").Cells.Clear
+        
+        ' Pick next quicklook in folder
+        Doc_File = Dir()
+    Loop
+    
+    ' Close whiteboard and quit word
+    Whiteboard.Close
+    Word.Quit
+    
+End Sub
